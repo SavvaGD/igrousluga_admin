@@ -17,10 +17,12 @@
         .order-date { color: #8b949e; font-size: 14px; margin: 5px 0; }
         .order-details { margin-top: 10px; color: #c9d1d9; }
         .order-details strong { color: #8b949e; }
-        .order-actions { margin-top: 15px; }
+        .order-actions { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
         .btn-done { background: #238636; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; }
         .btn-done:hover { background: #2ea043; }
         .btn-done:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+        .btn-delete { background: #da3633; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .btn-delete:hover { background: #f85149; }
         .no-orders { text-align: center; color: #8b949e; font-size: 18px; padding: 40px 0; }
         .back-link { display: inline-block; margin-top: 20px; color: #58a6ff; text-decoration: none; }
         .back-link:hover { text-decoration: underline; }
@@ -38,8 +40,8 @@
 </div>
 
 <script>
-// ССЫЛКА НА СКРИПТ ЗАКАЗОВ
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRsPEz4deERyab1cx0a7fp9oPEYGMby3Pqm93MYJbewgMJtZ3MbhfKd1PcRZmUZCT5/exec';
+// ТВОЯ НОВАЯ ССЫЛКА
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwhYr3JJhUxFdqnHJNYvXy9cCyk77nehFuI7tsxKdi3VeYzeDfQt1s4ij0hY6ExXs5s/exec';
 
 async function loadOrders() {
     const container = document.getElementById('ordersContainer');
@@ -55,7 +57,6 @@ async function loadOrders() {
 
         let html = '';
         orders.forEach(order => {
-            // Показываем только "Новые" или "Выполненные"
             const isDone = order.status === 'Выполнен';
             const statusText = isDone ? '✅ Выполнен' : '🆕 Новый';
             const statusClass = isDone ? 'done' : '';
@@ -72,7 +73,8 @@ async function loadOrders() {
                         <strong>Описание:</strong> ${order.description || '—'}
                     </div>
                     <div class="order-actions">
-                        ${!isDone ? `<button class="btn-done" onclick="markDone('${order.id}')">✅ Отметить выполненным</button>` : ''}
+                        ${!isDone ? `<button class="btn-done" onclick="markDone('${order.id}')">✅ Выполнен</button>` : ''}
+                        <button class="btn-delete" onclick="deleteOrder('${order.id}')">🗑️ Удалить</button>
                     </div>
                 </div>
             `;
@@ -90,9 +92,21 @@ window.markDone = async function(id) {
         const url = SCRIPT_URL + '?action=update&id=' + encodeURIComponent(id) + '&status=Выполнен';
         await fetch(url, { mode: 'no-cors' });
         alert('✅ Заказ отмечен как выполненный');
-        loadOrders(); // Обновляем список
+        loadOrders();
     } catch (error) {
         alert('❌ Ошибка');
+    }
+};
+
+window.deleteOrder = async function(id) {
+    if (!confirm(`Удалить заказ #${id}? Это действие нельзя отменить.`)) return;
+    try {
+        const url = SCRIPT_URL + '?action=delete&id=' + encodeURIComponent(id);
+        await fetch(url, { mode: 'no-cors' });
+        alert('🗑️ Заказ удалён');
+        loadOrders();
+    } catch (error) {
+        alert('❌ Ошибка удаления');
     }
 };
 
