@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Заказы — Админка</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: Arial, sans-serif; background: #0d1117; color: #e6edf3; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { margin-bottom: 20px; color: #58a6ff; }
+        .order-card { background: #161b22; border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 4px solid #238636; }
+        .order-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .order-name { font-size: 20px; font-weight: bold; }
+        .order-status { padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; }
+        .status-new { background: #1f2937; color: #60a5fa; }
+        .status-done { background: #0d2818; color: #3fb950; }
+        .status-canceled { background: #28171d; color: #f85149; }
+        .order-date { color: #8b949e; font-size: 14px; margin: 5px 0; }
+        .order-details { margin-top: 10px; color: #c9d1d9; }
+        .order-details strong { color: #8b949e; }
+        .order-actions { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-status { background: #238636; color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .btn-status:hover { background: #2ea043; }
+        .btn-status.done { background: #da3633; }
+        .btn-status.done:hover { background: #f85149; }
+        .no-orders { text-align: center; color: #8b949e; font-size: 18px; padding: 40px 0; }
+        .back-link { display: inline-block; margin-top: 20px; color: #58a6ff; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📦 Заказы</h1>
+    <div id="ordersContainer">
+        <div class="no-orders">⏳ Загрузка...</div>
+    </div>
+    <a href="index.html" class="back-link">← На главную</a>
+</div>
+
+<script>
+// ССЫЛКА НА СКРИПТ ЗАКАЗОВ
+const SCRIPT_URL = 'https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnSpe6lUY38ddt7wXMqc_x0LliEklqb9x8AWgfgRvSpUmEE-k3xHMXxeHWiHLim1JHsYVtsfBhhdHWLX6kPz5FgJfDkxdICzBm_8F9TtANcdM1LW0iG4eHGCAYu8BHBnisHuRF5Z29qgOgYWsU6nlP69f9gEA3u2BKIYN1Bf0r8KaNfFlNzqNO_9Q3NtmtbeRwzjguNlNZvYTyadLSFwTyiTVX_Bi5ATjrbsVJ_litj0feY8xRdHjPQwNrOU-8cmD6KQhoWsPGCv2xszYr_0q0KiTrGUdg&lib=MjKvejEL8VspAnGrqIqNCvhtExy1eM-DM';
+
+async function loadOrders() {
+    const container = document.getElementById('ordersContainer');
+    try {
+        const response = await fetch(SCRIPT_URL);
+        if (!response.ok) throw new Error('Ошибка загрузки');
+        const orders = await response.json();
+
+        if (!orders || orders.length === 0) {
+            container.innerHTML = '<div class="no-orders">📭 Пока нет заказов</div>';
+            return;
+        }
+
+        let html = '';
+        orders.forEach(order => {
+            let statusClass = 'status-new';
+            if (order.status === 'Выполнен') statusClass = 'status-done';
+            if (order.status === 'Отменён') statusClass = 'status-canceled';
+            
+            html += `
+                <div class="order-card">
+                    <div class="order-header">
+                        <span class="order-name">${order.name}</span>
+                        <span class="order-status ${statusClass}">${order.status || 'Новый'}</span>
+                    </div>
+                    <div class="order-date">📅 ${order.date} | 📱 ${order.phone}</div>
+                    <div class="order-details">
+                        <strong>Услуга:</strong> ${order.service}<br>
+                        <strong>Описание:</strong> ${order.description || '—'}
+                    </div>
+                    <div class="order-actions">
+                        <button class="btn-status" onclick="updateStatus('${order.phone}', 'Выполнен')">✅ Выполнен</button>
+                        <button class="btn-status done" onclick="updateStatus('${order.phone}', 'Отменён')">❌ Отменить</button>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    } catch (error) {
+        container.innerHTML = '<div class="no-orders">❌ Ошибка загрузки заказов</div>';
+        console.error(error);
+    }
+}
+
+// Обновление статуса (вызовет скрипт с параметром action=update)
+window.updateStatus = async function(phone, newStatus) {
+    try {
+        const url = SCRIPT_URL + '?action=update&phone=' + encodeURIComponent(phone) + '&status=' + encodeURIComponent(newStatus);
+        await fetch(url, { mode: 'no-cors' });
+        alert(`✅ Статус изменён на "${newStatus}"`);
+        loadOrders(); // Обновляем список
+    } catch (error) {
+        alert('❌ Ошибка обновления статуса');
+    }
+};
+
+loadOrders();
+</script>
+
+</body>
+</html>
