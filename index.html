@@ -12,26 +12,19 @@
         .order-card { background: #161b22; border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 4px solid #238636; }
         .order-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .order-name { font-size: 20px; font-weight: bold; }
-        .order-status { padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; }
-        .status-new { background: #1f2937; color: #60a5fa; }
-        .status-read { background: #1f2937; color: #8b949e; }
-        .status-accepted { background: #0d2818; color: #3fb950; }
-        .status-working { background: #1f3a2a; color: #58a6ff; }
-        .status-done { background: #0d2818; color: #3fb950; border: 1px solid #238636; }
-        .status-canceled { background: #28171d; color: #f85149; }
+        .order-status { padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; background: #1f2937; color: #60a5fa; }
+        .order-status.done { background: #0d2818; color: #3fb950; border: 1px solid #238636; }
         .order-date { color: #8b949e; font-size: 14px; margin: 5px 0; }
         .order-details { margin-top: 10px; color: #c9d1d9; }
         .order-details strong { color: #8b949e; }
-        .order-actions { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
-        .btn-status { background: #238636; color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; }
-        .btn-status:hover { background: #2ea043; }
-        .btn-status.danger { background: #da3633; }
-        .btn-status.danger:hover { background: #f85149; }
-        .btn-status.secondary { background: #1f2937; }
-        .btn-status.secondary:hover { background: #30363d; }
+        .order-actions { margin-top: 15px; }
+        .btn-done { background: #238636; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .btn-done:hover { background: #2ea043; }
+        .btn-done:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
         .no-orders { text-align: center; color: #8b949e; font-size: 18px; padding: 40px 0; }
         .back-link { display: inline-block; margin-top: 20px; color: #58a6ff; text-decoration: none; }
         .back-link:hover { text-decoration: underline; }
+        .order-id { color: #8b949e; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -46,29 +39,7 @@
 
 <script>
 // ССЫЛКА НА СКРИПТ ЗАКАЗОВ
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBAThX5WZfdpoHxMgjf_SFOcbcnLF9njva49exWgRju9HxPvumVVrjdCwduN-DMVoz/exec';
-
-// Все возможные статусы
-const STATUSES = [
-    'Новый',
-    'Прочитанный',
-    'Принятый',
-    'Выполняющийся',
-    'Выполненный',
-    'Отменённый'
-];
-
-function getStatusClass(status) {
-    const map = {
-        'Новый': 'status-new',
-        'Прочитанный': 'status-read',
-        'Принятый': 'status-accepted',
-        'Выполняющийся': 'status-working',
-        'Выполненный': 'status-done',
-        'Отменённый': 'status-canceled'
-    };
-    return map[status] || 'status-new';
-}
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRsPEz4deERyab1cx0a7fp9oPEYGMby3Pqm93MYJbewgMJtZ3MbhfKd1PcRZmUZCT5/exec';
 
 async function loadOrders() {
     const container = document.getElementById('ordersContainer');
@@ -84,33 +55,24 @@ async function loadOrders() {
 
         let html = '';
         orders.forEach(order => {
-            const statusClass = getStatusClass(order.status);
-            
-            // Генерируем кнопки для каждого статуса
-            let buttonsHtml = '';
-            STATUSES.forEach(status => {
-                if (status !== order.status && status !== 'Отменённый') {
-                    buttonsHtml += `<button class="btn-status" onclick="updateStatus('${order.phone}', '${status}')">${status}</button>`;
-                }
-            });
-            // Кнопка "Отменённый" всегда красная
-            if (order.status !== 'Отменённый') {
-                buttonsHtml += `<button class="btn-status danger" onclick="updateStatus('${order.phone}', 'Отменённый')">❌ Отменить</button>`;
-            }
+            // Показываем только "Новые" или "Выполненные"
+            const isDone = order.status === 'Выполнен';
+            const statusText = isDone ? '✅ Выполнен' : '🆕 Новый';
+            const statusClass = isDone ? 'done' : '';
             
             html += `
                 <div class="order-card">
                     <div class="order-header">
                         <span class="order-name">${order.name}</span>
-                        <span class="order-status ${statusClass}">${order.status || 'Новый'}</span>
+                        <span class="order-status ${statusClass}">${statusText}</span>
                     </div>
-                    <div class="order-date">📅 ${order.date} | 📱 ${order.phone}</div>
+                    <div class="order-date">📅 ${order.date} | 📱 ${order.phone} | <span class="order-id">#${order.id}</span></div>
                     <div class="order-details">
                         <strong>Услуга:</strong> ${order.service}<br>
                         <strong>Описание:</strong> ${order.description || '—'}
                     </div>
                     <div class="order-actions">
-                        ${buttonsHtml}
+                        ${!isDone ? `<button class="btn-done" onclick="markDone('${order.id}')">✅ Отметить выполненным</button>` : ''}
                     </div>
                 </div>
             `;
@@ -122,15 +84,15 @@ async function loadOrders() {
     }
 }
 
-window.updateStatus = async function(phone, newStatus) {
-    if (!confirm(`Изменить статус для "${phone}" на "${newStatus}"?`)) return;
+window.markDone = async function(id) {
+    if (!confirm(`Отметить заказ как выполненный?`)) return;
     try {
-        const url = SCRIPT_URL + '?action=update&phone=' + encodeURIComponent(phone) + '&status=' + encodeURIComponent(newStatus);
+        const url = SCRIPT_URL + '?action=update&id=' + encodeURIComponent(id) + '&status=Выполнен';
         await fetch(url, { mode: 'no-cors' });
-        alert(`✅ Статус изменён на "${newStatus}"`);
-        loadOrders();
+        alert('✅ Заказ отмечен как выполненный');
+        loadOrders(); // Обновляем список
     } catch (error) {
-        alert('❌ Ошибка обновления статуса');
+        alert('❌ Ошибка');
     }
 };
 
