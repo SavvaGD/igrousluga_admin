@@ -3,30 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Заказы — Админка</title>
+    <title>Заказы</title>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family: Arial, sans-serif; background: #0d1117; color: #e6edf3; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
         h1 { margin-bottom: 20px; color: #58a6ff; }
         .order-card { background: #161b22; border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 4px solid #238636; }
-        .order-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .order-name { font-size: 20px; font-weight: bold; }
-        .order-status { padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; background: #1f2937; color: #60a5fa; }
-        .order-status.done { background: #0d2818; color: #3fb950; border: 1px solid #238636; }
         .order-date { color: #8b949e; font-size: 14px; margin: 5px 0; }
         .order-details { margin-top: 10px; color: #c9d1d9; }
         .order-details strong { color: #8b949e; }
-        .order-actions { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
-        .btn-done { background: #238636; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; }
-        .btn-done:hover { background: #2ea043; }
-        .btn-done:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+        .order-actions { margin-top: 15px; }
         .btn-delete { background: #da3633; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; }
         .btn-delete:hover { background: #f85149; }
         .no-orders { text-align: center; color: #8b949e; font-size: 18px; padding: 40px 0; }
         .back-link { display: inline-block; margin-top: 20px; color: #58a6ff; text-decoration: none; }
         .back-link:hover { text-decoration: underline; }
-        .order-id { color: #8b949e; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -41,7 +34,7 @@
 
 <script>
 // ТВОЯ НОВАЯ ССЫЛКА
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwhYr3JJhUxFdqnHJNYvXy9cCyk77nehFuI7tsxKdi3VeYzeDfQt1s4ij0hY6ExXs5s/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxNkXnUslHGuOl4pwvU2wdX7LX85EtiDZydEKvjyiw0JRfW0Dyw9-U_Ly7jvgkLb66c/exec';
 
 async function loadOrders() {
     const container = document.getElementById('ordersContainer');
@@ -57,24 +50,16 @@ async function loadOrders() {
 
         let html = '';
         orders.forEach(order => {
-            const isDone = order.status === 'Выполнен';
-            const statusText = isDone ? '✅ Выполнен' : '🆕 Новый';
-            const statusClass = isDone ? 'done' : '';
-            
             html += `
                 <div class="order-card">
-                    <div class="order-header">
-                        <span class="order-name">${order.name}</span>
-                        <span class="order-status ${statusClass}">${statusText}</span>
-                    </div>
-                    <div class="order-date">📅 ${order.date} | 📱 ${order.phone} | <span class="order-id">#${order.id}</span></div>
+                    <div class="order-name">${order.name}</div>
+                    <div class="order-date">📅 ${order.date} | 📱 ${order.phone}</div>
                     <div class="order-details">
                         <strong>Услуга:</strong> ${order.service}<br>
                         <strong>Описание:</strong> ${order.description || '—'}
                     </div>
                     <div class="order-actions">
-                        ${!isDone ? `<button class="btn-done" onclick="markDone('${order.id}')">✅ Выполнен</button>` : ''}
-                        <button class="btn-delete" onclick="deleteOrder('${order.id}')">🗑️ Удалить</button>
+                        <button class="btn-delete" onclick="deleteOrder(${order.row})">🗑️ Удалить</button>
                     </div>
                 </div>
             `;
@@ -86,22 +71,10 @@ async function loadOrders() {
     }
 }
 
-window.markDone = async function(id) {
-    if (!confirm(`Отметить заказ как выполненный?`)) return;
+window.deleteOrder = async function(row) {
+    if (!confirm(`Удалить заказ?`)) return;
     try {
-        const url = SCRIPT_URL + '?action=update&id=' + encodeURIComponent(id) + '&status=Выполнен';
-        await fetch(url, { mode: 'no-cors' });
-        alert('✅ Заказ отмечен как выполненный');
-        loadOrders();
-    } catch (error) {
-        alert('❌ Ошибка');
-    }
-};
-
-window.deleteOrder = async function(id) {
-    if (!confirm(`Удалить заказ #${id}? Это действие нельзя отменить.`)) return;
-    try {
-        const url = SCRIPT_URL + '?action=delete&id=' + encodeURIComponent(id);
+        const url = SCRIPT_URL + '?action=delete&row=' + row;
         await fetch(url, { mode: 'no-cors' });
         alert('🗑️ Заказ удалён');
         loadOrders();
