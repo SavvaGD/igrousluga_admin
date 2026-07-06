@@ -14,16 +14,21 @@
         .order-name { font-size: 20px; font-weight: bold; }
         .order-status { padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; }
         .status-new { background: #1f2937; color: #60a5fa; }
-        .status-done { background: #0d2818; color: #3fb950; }
+        .status-read { background: #1f2937; color: #8b949e; }
+        .status-accepted { background: #0d2818; color: #3fb950; }
+        .status-working { background: #1f3a2a; color: #58a6ff; }
+        .status-done { background: #0d2818; color: #3fb950; border: 1px solid #238636; }
         .status-canceled { background: #28171d; color: #f85149; }
         .order-date { color: #8b949e; font-size: 14px; margin: 5px 0; }
         .order-details { margin-top: 10px; color: #c9d1d9; }
         .order-details strong { color: #8b949e; }
         .order-actions { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
-        .btn-status { background: #238636; color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .btn-status { background: #238636; color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; }
         .btn-status:hover { background: #2ea043; }
-        .btn-status.done { background: #da3633; }
-        .btn-status.done:hover { background: #f85149; }
+        .btn-status.danger { background: #da3633; }
+        .btn-status.danger:hover { background: #f85149; }
+        .btn-status.secondary { background: #1f2937; }
+        .btn-status.secondary:hover { background: #30363d; }
         .no-orders { text-align: center; color: #8b949e; font-size: 18px; padding: 40px 0; }
         .back-link { display: inline-block; margin-top: 20px; color: #58a6ff; text-decoration: none; }
         .back-link:hover { text-decoration: underline; }
@@ -43,6 +48,28 @@
 // ССЫЛКА НА СКРИПТ ЗАКАЗОВ
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6V48Y8Wof-gW00jtp5UUimRtGOKZirEB3TTYwSwgq2swMoG5r6IEYnijJBUQbrZi-/exec';
 
+// Все возможные статусы
+const STATUSES = [
+    'Новый',
+    'Прочитанный',
+    'Принятый',
+    'Выполняющийся',
+    'Выполненный',
+    'Отменённый'
+];
+
+function getStatusClass(status) {
+    const map = {
+        'Новый': 'status-new',
+        'Прочитанный': 'status-read',
+        'Принятый': 'status-accepted',
+        'Выполняющийся': 'status-working',
+        'Выполненный': 'status-done',
+        'Отменённый': 'status-canceled'
+    };
+    return map[status] || 'status-new';
+}
+
 async function loadOrders() {
     const container = document.getElementById('ordersContainer');
     try {
@@ -57,9 +84,19 @@ async function loadOrders() {
 
         let html = '';
         orders.forEach(order => {
-            let statusClass = 'status-new';
-            if (order.status === 'Выполнен') statusClass = 'status-done';
-            if (order.status === 'Отменён') statusClass = 'status-canceled';
+            const statusClass = getStatusClass(order.status);
+            
+            // Генерируем кнопки для каждого статуса
+            let buttonsHtml = '';
+            STATUSES.forEach(status => {
+                if (status !== order.status && status !== 'Отменённый') {
+                    buttonsHtml += `<button class="btn-status" onclick="updateStatus('${order.phone}', '${status}')">${status}</button>`;
+                }
+            });
+            // Кнопка "Отменённый" всегда красная
+            if (order.status !== 'Отменённый') {
+                buttonsHtml += `<button class="btn-status danger" onclick="updateStatus('${order.phone}', 'Отменённый')">❌ Отменить</button>`;
+            }
             
             html += `
                 <div class="order-card">
@@ -73,8 +110,7 @@ async function loadOrders() {
                         <strong>Описание:</strong> ${order.description || '—'}
                     </div>
                     <div class="order-actions">
-                        <button class="btn-status" onclick="updateStatus('${order.phone}', 'Выполнен')">✅ Выполнен</button>
-                        <button class="btn-status done" onclick="updateStatus('${order.phone}', 'Отменён')">❌ Отменить</button>
+                        ${buttonsHtml}
                     </div>
                 </div>
             `;
@@ -86,13 +122,13 @@ async function loadOrders() {
     }
 }
 
-// Обновление статуса (вызовет скрипт с параметром action=update)
 window.updateStatus = async function(phone, newStatus) {
+    if (!confirm(`Изменить статус для "${phone}" на "${newStatus}"?`)) return;
     try {
         const url = SCRIPT_URL + '?action=update&phone=' + encodeURIComponent(phone) + '&status=' + encodeURIComponent(newStatus);
         await fetch(url, { mode: 'no-cors' });
         alert(`✅ Статус изменён на "${newStatus}"`);
-        loadOrders(); // Обновляем список
+        loadOrders();
     } catch (error) {
         alert('❌ Ошибка обновления статуса');
     }
