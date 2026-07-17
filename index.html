@@ -3,37 +3,307 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Заказы</title>
+    <title>Админка — Игро услуга</title>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family: Arial, sans-serif; background: #0d1117; color: #e6edf3; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
         h1 { margin-bottom: 20px; color: #58a6ff; }
         .order-card { background: #161b22; border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 4px solid #238636; }
+        .order-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .order-name { font-size: 20px; font-weight: bold; }
         .order-date { color: #8b949e; font-size: 14px; margin: 5px 0; }
         .order-details { margin-top: 10px; color: #c9d1d9; }
         .order-details strong { color: #8b949e; }
-        .order-actions { margin-top: 15px; }
-        .btn-delete { background: #da3633; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; }
-        .btn-delete:hover { background: #f85149; }
+        .order-actions { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn { background: #238636; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .btn:hover { background: #2ea043; }
+        .btn.danger { background: #da3633; }
+        .btn.danger:hover { background: #f85149; }
+        .btn.secondary { background: #1f2937; }
+        .btn.secondary:hover { background: #30363d; }
         .no-orders { text-align: center; color: #8b949e; font-size: 18px; padding: 40px 0; }
         .back-link { display: inline-block; margin-top: 20px; color: #58a6ff; text-decoration: none; }
         .back-link:hover { text-decoration: underline; }
+
+        .login-box { max-width: 400px; margin: 100px auto; background: #161b22; padding: 40px; border-radius: 12px; border: 1px solid #30363d; }
+        .login-box h2 { color: #58a6ff; margin-bottom: 20px; }
+        .login-box input { width: 100%; padding: 12px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #e6edf3; font-size: 16px; margin-bottom: 15px; }
+        .login-box input:focus { border-color: #58a6ff; outline: none; }
+        .login-box .btn { width: 100%; padding: 12px; font-size: 16px; }
+        .login-box .error { color: #f85149; margin-top: 10px; display: none; }
+        .login-box .success { color: #3fb950; margin-top: 10px; display: none; }
+        .login-box .setup-info { color: #8b949e; font-size: 14px; margin-bottom: 15px; }
+        .password-strength { height: 4px; background: #30363d; border-radius: 2px; margin-top: -10px; margin-bottom: 15px; overflow: hidden; }
+        .password-strength .fill { height: 100%; width: 0%; background: #238636; transition: width 0.3s; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>📦 Заказы</h1>
-    <div id="ordersContainer">
-        <div class="no-orders">⏳ Загрузка...</div>
+    <div id="app">
+        <!-- Страница входа/установки пароля -->
+        <div id="loginPage" style="display: none;">
+            <div class="login-box">
+                <h2 id="loginTitle">🔐 Вход в админку</h2>
+                <p id="loginSubtitle" class="setup-info">Введите пароль для доступа</p>
+                <div class="password-strength"><div class="fill" id="strengthFill"></div></div>
+                <input type="password" id="passwordInput" placeholder="Введите пароль" />
+                <button id="loginBtn" class="btn">Войти</button>
+                <div id="loginError" class="error">❌ Неверный пароль</div>
+                <div id="loginSuccess" class="success">✅ Пароль установлен! Войдите заново.</div>
+                <div id="setupInfo" class="setup-info" style="display:none; margin-top:15px;">
+                    <strong>Пароль должен содержать:</strong>
+                    <ul style="margin:10px 0 0 20px; color:#8b949e;">
+                        <li>Минимум 6 символов</li>
+                        <li>Хотя бы одну цифру</li>
+                        <li>Хотя бы одну заглавную букву</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Админка -->
+        <div id="adminPage" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <h1>📦 Заказы</h1>
+                <button id="logoutBtn" class="btn secondary">🚪 Выйти</button>
+            </div>
+            <div id="ordersContainer">
+                <div class="no-orders">⏳ Загрузка...</div>
+            </div>
+            <a href="index.html" class="back-link">← На главную</a>
+        </div>
     </div>
-    <a href="index.html" class="back-link">← На главную</a>
 </div>
 
+<footer style="text-align: center; padding: 30px; color: #8b949e; font-size: 14px; border-top: 1px solid #30363d; margin-top: 40px;">
+    © 2026 Игро услуга — Разработка игр на заказ
+</footer>
+
 <script>
-// ТВОЯ НОВАЯ ССЫЛКА
+// ============================================================
+// 1. РАБОТА С ПАРОЛЕМ (localStorage + password.txt)
+// ============================================================
+
+const PASSWORD_FILE = 'password.txt';
+const STORAGE_KEY = 'admin_password_hash';
+
+// Функция для хеширования пароля (SHA-256 через SubtleCrypto)
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Загрузка пароля из файла
+async function loadPasswordFromFile() {
+    try {
+        const response = await fetch(PASSWORD_FILE + '?t=' + Date.now());
+        if (response.ok) {
+            const text = await response.text();
+            const hash = text.trim();
+            if (hash && hash.length === 64) {
+                localStorage.setItem(STORAGE_KEY, hash);
+                return hash;
+            }
+        }
+    } catch (e) {
+        console.log('Файл password.txt не найден или пуст');
+    }
+    return null;
+}
+
+// Проверка, установлен ли пароль
+function isPasswordSet() {
+    return !!localStorage.getItem(STORAGE_KEY);
+}
+
+// Проверка пароля
+async function verifyPassword(inputPassword) {
+    const storedHash = localStorage.getItem(STORAGE_KEY);
+    if (!storedHash) return false;
+    const inputHash = await hashPassword(inputPassword);
+    return inputHash === storedHash;
+}
+
+// Установка нового пароля
+async function setNewPassword(newPassword) {
+    const hash = await hashPassword(newPassword);
+    localStorage.setItem(STORAGE_KEY, hash);
+    // Сохраняем в файл (через скачивание)
+    downloadPasswordFile(hash);
+    return hash;
+}
+
+// Скачивание password.txt с хешем
+function downloadPasswordFile(hash) {
+    const blob = new Blob([hash], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'password.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+}
+
+// ============================================================
+// 2. ИНИЦИАЛИЗАЦИЯ СТРАНИЦЫ
+// ============================================================
+
+let currentState = 'login'; // 'login' | 'setup' | 'admin'
+
+async function initApp() {
+    const loginPage = document.getElementById('loginPage');
+    const adminPage = document.getElementById('adminPage');
+    const loginTitle = document.getElementById('loginTitle');
+    const loginSubtitle = document.getElementById('loginSubtitle');
+    const loginBtn = document.getElementById('loginBtn');
+    const passwordInput = document.getElementById('passwordInput');
+    const loginError = document.getElementById('loginError');
+    const loginSuccess = document.getElementById('loginSuccess');
+    const setupInfo = document.getElementById('setupInfo');
+    const strengthFill = document.getElementById('strengthFill');
+
+    // Загружаем пароль из файла, если есть
+    const fileHash = await loadPasswordFromFile();
+
+    if (isPasswordSet()) {
+        // Пароль уже установлен — показываем вход
+        loginTitle.textContent = '🔐 Вход в админку';
+        loginSubtitle.textContent = 'Введите пароль для доступа';
+        setupInfo.style.display = 'none';
+        loginBtn.textContent = 'Войти';
+        currentState = 'login';
+    } else {
+        // Пароль не установлен — предлагаем создать
+        loginTitle.textContent = '🔐 Установка пароля';
+        loginSubtitle.textContent = 'Создайте пароль для входа в админку';
+        setupInfo.style.display = 'block';
+        loginBtn.textContent = 'Установить пароль';
+        currentState = 'setup';
+    }
+
+    // Показать страницу входа
+    loginPage.style.display = 'block';
+    adminPage.style.display = 'none';
+
+    // Обработка ввода пароля
+    loginBtn.onclick = async function() {
+        const password = passwordInput.value.trim();
+        if (!password) {
+            loginError.textContent = '❌ Введите пароль';
+            loginError.style.display = 'block';
+            return;
+        }
+
+        if (currentState === 'setup') {
+            // Установка нового пароля
+            if (password.length < 6) {
+                loginError.textContent = '❌ Пароль должен быть минимум 6 символов';
+                loginError.style.display = 'block';
+                return;
+            }
+            if (!/\d/.test(password)) {
+                loginError.textContent = '❌ Пароль должен содержать хотя бы одну цифру';
+                loginError.style.display = 'block';
+                return;
+            }
+            if (!/[A-Z]/.test(password)) {
+                loginError.textContent = '❌ Пароль должен содержать хотя бы одну заглавную букву';
+                loginError.style.display = 'block';
+                return;
+            }
+
+            const hash = await setNewPassword(password);
+            loginError.style.display = 'none';
+            loginSuccess.textContent = '✅ Пароль установлен! Теперь войдите с новым паролем.';
+            loginSuccess.style.display = 'block';
+            passwordInput.value = '';
+            currentState = 'login';
+            loginTitle.textContent = '🔐 Вход в админку';
+            loginSubtitle.textContent = 'Введите пароль для доступа';
+            setupInfo.style.display = 'none';
+            loginBtn.textContent = 'Войти';
+            // Файл password.txt скачается автоматически
+            return;
+        }
+
+        // Проверка пароля (login)
+        const isValid = await verifyPassword(password);
+        if (isValid) {
+            loginError.style.display = 'none';
+            loginSuccess.style.display = 'none';
+            // Вход выполнен
+            loginPage.style.display = 'none';
+            adminPage.style.display = 'block';
+            loadOrders();
+        } else {
+            loginError.textContent = '❌ Неверный пароль';
+            loginError.style.display = 'block';
+            passwordInput.value = '';
+            passwordInput.focus();
+        }
+    };
+
+    // Выход
+    document.getElementById('logoutBtn').onclick = function() {
+        adminPage.style.display = 'none';
+        loginPage.style.display = 'block';
+        passwordInput.value = '';
+        loginError.style.display = 'none';
+        loginSuccess.style.display = 'none';
+        // Если пароль не установлен, показываем форму установки
+        if (!isPasswordSet()) {
+            currentState = 'setup';
+            loginTitle.textContent = '🔐 Установка пароля';
+            loginSubtitle.textContent = 'Создайте пароль для входа в админку';
+            setupInfo.style.display = 'block';
+            loginBtn.textContent = 'Установить пароль';
+        } else {
+            currentState = 'login';
+            loginTitle.textContent = '🔐 Вход в админку';
+            loginSubtitle.textContent = 'Введите пароль для доступа';
+            setupInfo.style.display = 'none';
+            loginBtn.textContent = 'Войти';
+        }
+    };
+
+    // Индикатор сложности пароля (при вводе)
+    passwordInput.oninput = function() {
+        const val = this.value;
+        let score = 0;
+        if (val.length >= 6) score++;
+        if (/\d/.test(val)) score++;
+        if (/[A-Z]/.test(val)) score++;
+        if (/[a-z]/.test(val)) score++;
+        const percent = (score / 4) * 100;
+        strengthFill.style.width = percent + '%';
+        if (percent < 50) strengthFill.style.background = '#da3633';
+        else if (percent < 75) strengthFill.style.background = '#ffc107';
+        else strengthFill.style.background = '#238636';
+    };
+
+    // Enter на поле пароля
+    passwordInput.onkeydown = function(e) {
+        if (e.key === 'Enter') {
+            loginBtn.click();
+        }
+    };
+
+    // Если пароль уже есть, пробуем войти автоматически (если файл подгрузился)
+    if (isPasswordSet() && fileHash) {
+        // Не делаем автовход, пусть пользователь введёт пароль
+    }
+}
+
+// ============================================================
+// 3. ЗАГРУЗКА ЗАКАЗОВ (как было)
+// ============================================================
+
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxNkXnUslHGuOl4pwvU2wdX7LX85EtiDZydEKvjyiw0JRfW0Dyw9-U_Ly7jvgkLb66c/exec';
 
 async function loadOrders() {
@@ -52,14 +322,16 @@ async function loadOrders() {
         orders.forEach(order => {
             html += `
                 <div class="order-card">
-                    <div class="order-name">${order.name}</div>
+                    <div class="order-header">
+                        <span class="order-name">${order.name}</span>
+                    </div>
                     <div class="order-date">📅 ${order.date} | 📱 ${order.phone}</div>
                     <div class="order-details">
                         <strong>Услуга:</strong> ${order.service}<br>
                         <strong>Описание:</strong> ${order.description || '—'}
                     </div>
                     <div class="order-actions">
-                        <button class="btn-delete" onclick="deleteOrder(${order.row})">🗑️ Удалить</button>
+                        <button class="btn" onclick="deleteOrder(${order.row})">🗑️ Удалить</button>
                     </div>
                 </div>
             `;
@@ -83,7 +355,11 @@ window.deleteOrder = async function(row) {
     }
 };
 
-loadOrders();
+// ============================================================
+// 4. ЗАПУСК
+// ============================================================
+
+initApp();
 </script>
 
 </body>
